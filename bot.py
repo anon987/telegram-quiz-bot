@@ -12,59 +12,72 @@ from telegram.ext import (
     filters,
 )
 
+# Load from environment variables
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 GROUP_CHAT_ID = os.getenv("GROUP_CHAT_ID")  # e.g., -1001234567890 or @channelusername
 
+# Set up logging
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
 )
+logger = logging.getLogger(__name__)
 
-# /start command handler
+# /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Send me your quiz Excel file (.xlsx)")
+    await update.message.reply_text("👋 Hi! Please send me your quiz Excel file (.xlsx)")
 
-# Document upload handler
+# Handle uploaded Excel file
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file = update.message.document
-    if not file.file_name.endswith(".xlsx"):
-        await update.message.reply_text("Please upload a valid .xlsx Excel file.")
+    if not file or not file.file_name.endswith(".xlsx"):
+        await update.message.reply_text("⚠️ Please upload a valid `.xlsx` Excel file.")
         return
 
     file_path = f"./{file.file_name}"
     new_file = await file.get_file()
-    await new_file.download_to_drive(file_path)
-    await update.message.reply_text("Processing your quiz...")
 
     try:
-        df = pd.read_excel(file_path)
-        for i, row in df.iterrows():
-            question = row["Question"]
-            options = [row["A"], row["B"], row["C"], row["D"]]
-            correct_option_id = ord(str(row["Correct"]).upper()) - ord("A")
+        await new_file.download_to_drive(file_path)
+        await update.message.reply_text("📄 Processing your quiz...")
 
-            await context.bot.send_poll(
-                chat_id=GROUP_CHAT_ID,
-                question=question,
-                options=options,
-                type="quiz",
-                correct_option_id=correct_option_id,
-                is_anonymous=False,
-            )
-            await asyncio.sleep(1)  # Delay between polls to avoid rate limits
+        df = pd.read_excel(file_path)
+
+        for i, row in df.iterrows():
+            question = str(row.get("Question", "")).strip()
+            options = [str(row.get(col, "")).strip() for col in ["A", "B", "C", "D"]]
+            correct = str(row.get("Correct", "A")).strip().upper()
+
+            if question and all(options) and correct in ["A", "B", "C", "D"]:
+                correct_option_id = ord(correct) - ord("A")
+                await context.bot.send_poll(
+                    chat_id=GROUP_CHAT_ID,
+                    question=question,
+                    options=options,
+                    type="quiz",
+                    correct_option_id=correct_option_id,
+                    is_anonymous=False,
+                )
+                await asyncio.sleep(1)  # Prevent hitting Telegram rate limits
+            else:
+                logger.warning(f"Skipping invalid row: {row}")
+
     except Exception as e:
-        await update.message.reply_text(f"Error processing file: {e}")
+        logger.error(f"Error processing file: {e}")
+        await update.message.reply_text(f"❌ Error: {e}")
     finally:
         if os.path.exists(file_path):
             os.remove(file_path)
 
-# Main function to run the bot
+# Main entry point
 def main():
-    application = ApplicationBuilder().token(BOT_TOKEN).build()
+    if not BOT_TOKEN or not GROUP_CHAT_ID:
+        raise ValueError("BOT_TOKEN or GROUP_CHAT_ID is not set in environment variables.")
 
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
-
-    application.run_polling()
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
