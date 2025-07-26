@@ -1,16 +1,11 @@
 services:
-  - type: web
+  - type: worker
     name: telegram-quiz-bot
     env: python
-    buildCommand: ""
+    buildCommand: "pip install -r requirements.txt"
     startCommand: "python bot.py"
     envVars:
       - key: BOT_TOKEN
         sync: false
       - key: GROUP_CHAT_ID
         sync: false
-
-
-buildCommand: |
-  pip install --upgrade --force-reinstall python-telegram-bot==20.7
-  # other pip install
