@@ -1,11 +1,16 @@
 services:
-  - type: worker
+  - type: web
     name: telegram-quiz-bot
     env: python
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "python bot.py"
+    startCommand: "gunicorn bot:app --workers 4 --worker-class uvicorn.workers.UvicornWorker"
     envVars:
       - key: BOT_TOKEN
         sync: false
       - key: GROUP_CHAT_ID
         sync: false
+      - key: WEBHOOK_URL
+        fromService:
+          type: web
+          name: telegram-quiz-bot
+          property: url

@@ -70,14 +70,26 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
             os.remove(file_path)
 
 # Main entry point
-def main():
-    if not BOT_TOKEN or not GROUP_CHAT_ID:
-        raise ValueError("BOT_TOKEN or GROUP_CHAT_ID is not set in environment variables.")
+if not BOT_TOKEN or not GROUP_CHAT_ID:
+    raise ValueError("BOT_TOKEN or GROUP_CHAT_ID is not set in environment variables.")
 
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
-    app.run_polling()
+app = ApplicationBuilder().token(BOT_TOKEN).build()
+app.add_handler(CommandHandler("start", start))
+app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+
+async def main():
+    # Set up webhook
+    webhook_url = os.getenv("WEBHOOK_URL")
+    if webhook_url:
+        await app.bot.set_webhook(url=f"{webhook_url}/{BOT_TOKEN}")
+        logger.info(f"Webhook set to {webhook_url}/{BOT_TOKEN}")
+    else:
+        logger.warning("WEBHOOK_URL not set, running in polling mode.")
+        app.run_polling()
 
 if __name__ == "__main__":
-    main()
+    # In a webhook setup, the web server will run the application.
+    # The main function is now async and needs to be run in an event loop
+    # if you want to run it directly for testing.
+    # For Render deployment, gunicorn will handle this.
+    asyncio.run(main())
