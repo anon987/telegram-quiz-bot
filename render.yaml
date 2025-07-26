@@ -3,7 +3,7 @@ services:
     name: telegram-quiz-bot
     env: python
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn bot:app --workers 4 --worker-class uvicorn.workers.UvicornWorker"
+    startCommand: "python bot.py"
     envVars:
       - key: BOT_TOKEN
         sync: false
