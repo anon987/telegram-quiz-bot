@@ -3,7 +3,9 @@ from datetime import datetime, timedelta
 
 def get_db_connection():
     """Establishes a connection to the SQLite database."""
-    conn = sqlite3.connect('quiz_bot.db')
+    # Ensure the database is stored on the persistent disk
+    db_path = '/data/quiz_bot.db'
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
