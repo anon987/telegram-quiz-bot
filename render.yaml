@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: telegram-quiz-bot
+    env: python
+    buildCommand: ""
+    startCommand: "python bot.py"
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: GROUP_CHAT_ID
+        sync: false
