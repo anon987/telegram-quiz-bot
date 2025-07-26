@@ -30,11 +30,6 @@ logger = logging.getLogger(__name__)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("👋 Hi! Please send me your quiz Excel file (.xlsx)")
 
-async def get_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """A temporary command to get the chat ID."""
-    chat_id = update.message.chat_id
-    await update.message.reply_text(f"This chat's ID is: `{chat_id}`", parse_mode='Markdown')
-
 # Handle uploaded Excel file
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file = update.message.document
@@ -130,7 +125,6 @@ def main():
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("chatid", get_chat_id))
     app.add_handler(CommandHandler("leaderboard", leaderboard))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     app.add_handler(PollAnswerHandler(handle_poll_answer))
