@@ -4,13 +4,11 @@ from datetime import datetime, timedelta
 
 def get_db_connection():
     """Establishes a connection to the SQLite database."""
-    # Ensure the database is stored on the persistent disk
-    db_dir = '/data'
-    db_path = os.path.join(db_dir, 'quiz_bot.db')
-    
-    # Create the directory if it doesn't exist
+    # The persistent disk is mounted at /data. We'll create a subdirectory for our db.
+    db_dir = '/data/database'
     os.makedirs(db_dir, exist_ok=True)
     
+    db_path = os.path.join(db_dir, 'quiz_bot.db')
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
