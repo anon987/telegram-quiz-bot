@@ -60,10 +60,10 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 await asyncio.sleep(1)  # Prevent hitting Telegram rate limits
             else:
-                logger.warning(f"Skipping invalid row: {row}")
+                logger.warning(f"⚠️ Skipping invalid row: {row}")
 
     except Exception as e:
-        logger.error(f"Error processing file: {e}")
+        logger.error(f"❌ Error processing file: {e}")
         await update.message.reply_text(f"❌ Error: {e}")
     finally:
         if os.path.exists(file_path):
