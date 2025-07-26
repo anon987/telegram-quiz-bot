@@ -56,7 +56,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     options=options,
                     type="quiz",
                     correct_option_id=correct_option_id,
-                    is_anonymous=False,
+                    is_anonymous=True,
                 )
                 await asyncio.sleep(1)  # Prevent hitting Telegram rate limits
             else:
