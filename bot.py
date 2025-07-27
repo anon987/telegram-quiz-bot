@@ -107,7 +107,7 @@ async def handle_poll_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("Please specify a time frame (daily, weekly, monthly, yearly) or 'session' for the last quiz session.")
+        await update.message.reply_text("Please specify 'session' for the last quiz, or 'all' for the all-time leaderboard.")
         return
 
     arg = context.args[0].lower()
@@ -119,11 +119,11 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         leaderboard_data = db.get_leaderboard(session_id=session_id)
         message = f"🏆 *Current Session Leaderboard* 🏆\n\n"
-    elif arg in ['daily', 'weekly', 'monthly', 'yearly', 'all']:
-        leaderboard_data = db.get_leaderboard(time_frame=arg)
-        message = f"🏆 *{arg.capitalize()} Leaderboard* 🏆\n\n"
+    elif arg == 'all':
+        leaderboard_data = db.get_leaderboard(time_frame='all')
+        message = f"🏆 *All-Time Leaderboard* 🏆\n\n"
     else:
-        await update.message.reply_text("Invalid argument. Please use 'daily', 'weekly', 'monthly', 'yearly', or 'session'.")
+        await update.message.reply_text("Invalid argument. Please use 'session' or 'all'.")
         return
 
     if not leaderboard_data:
