@@ -17,7 +17,8 @@ from telegram.ext import (
 
 # Load from environment variables
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-GROUP_CHAT_ID = os.getenv("GROUP_CHAT_ID")  # e.g., -1001234567890 or @channelusername
+GROUP_CHAT_ID = os.getenv("GROUP_CHAT_ID")
+ADMIN_USER_ID = os.getenv("ADMIN_USER_ID")
 
 # Set up logging
 logging.basicConfig(
@@ -44,6 +45,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Handle uploaded Excel file
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    if str(user_id) != ADMIN_USER_ID:
+        await update.message.reply_text("Sorry, only the admin can start a new quiz.")
+        return
+
     file = update.message.document
     if not file or not file.file_name.endswith(".xlsx"):
         await update.message.reply_text("⚠️ Please upload a valid `.xlsx` Excel file.")
