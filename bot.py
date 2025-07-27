@@ -26,6 +26,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+def escape_markdown_v1(text: str) -> str:
+    """Escapes characters for Telegram's legacy Markdown."""
+    if not text:
+        return ""
+    # Characters to escape for legacy Markdown
+    escape_chars = ['_', '*', '`', '[']
+    for char in escape_chars:
+        text = text.replace(char, f'\\{char}')
+    return text
+
+
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("👋 Hi! Please send me your quiz Excel file (.xlsx)")
@@ -113,7 +125,8 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     for i, row in enumerate(leaderboard_data):
-        message += f"{i+1}. {row['username']} - {row['correct']} correct, {row['wrong']} wrong\n"
+        username = escape_markdown_v1(str(row.get('username', 'Unknown')))
+        message += f"{i+1}. {username} - {row['correct']} correct, {row['wrong']} wrong\n"
 
     await update.message.reply_text(message, parse_mode='Markdown')
 
