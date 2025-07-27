@@ -36,6 +36,34 @@ def initialize_database():
         )
     ''')
     
+    # Tables for time-based scores
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS daily_scores (
+            user_id BIGINT PRIMARY KEY,
+            username TEXT,
+            correct_answers INT DEFAULT 0,
+            wrong_answers INT DEFAULT 0
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS weekly_scores (
+            user_id BIGINT PRIMARY KEY,
+            username TEXT,
+            correct_answers INT DEFAULT 0,
+            wrong_answers INT DEFAULT 0
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS monthly_scores (
+            user_id BIGINT PRIMARY KEY,
+            username TEXT,
+            correct_answers INT DEFAULT 0,
+            wrong_answers INT DEFAULT 0
+        )
+    ''')
+    
     # We will keep the answer log for detailed history, but it won't be used for leaderboards.
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS answer_log (
@@ -101,9 +129,16 @@ def get_leaderboard(time_frame='all', session_id=None):
     if session_id:
         query = "SELECT username, correct_answers as correct, wrong_answers as wrong FROM session_scores WHERE session_id = %s ORDER BY correct DESC, wrong ASC LIMIT 100"
         cursor.execute(query, (session_id,))
-    else:
-        # For simplicity, we will only support all-time leaderboards from the summary table.
-        # Time-based leaderboards would require a more complex setup with cron jobs or triggers.
+    elif time_frame == 'daily':
+        query = "SELECT username, correct_answers as correct, wrong_answers as wrong FROM daily_scores ORDER BY correct DESC, wrong ASC LIMIT 100"
+        cursor.execute(query)
+    elif time_frame == 'weekly':
+        query = "SELECT username, correct_answers as correct, wrong_answers as wrong FROM weekly_scores ORDER BY correct DESC, wrong ASC LIMIT 100"
+        cursor.execute(query)
+    elif time_frame == 'monthly':
+        query = "SELECT username, correct_answers as correct, wrong_answers as wrong FROM monthly_scores ORDER BY correct DESC, wrong ASC LIMIT 100"
+        cursor.execute(query)
+    else: # all-time
         query = "SELECT username, correct_answers as correct, wrong_answers as wrong FROM user_scores ORDER BY correct DESC, wrong ASC LIMIT 100"
         cursor.execute(query)
         
