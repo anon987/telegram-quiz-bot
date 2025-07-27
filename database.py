@@ -24,6 +24,9 @@ def initialize_database():
         )
     ''')
     
+    # Add an index to the timestamp column for faster time-based queries
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_answer_log_timestamp ON answer_log (timestamp);')
+    
     conn.commit()
     cursor.close()
     conn.close()
