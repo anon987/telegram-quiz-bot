@@ -14,7 +14,3 @@ services:
           type: web
           name: telegram-quiz-bot
           property: url
-    disk:
-      name: quiz-bot-disk
-      mountPath: /data
-      sizeGB: 1
