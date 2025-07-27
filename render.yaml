@@ -18,16 +18,3 @@ services:
         sync: false
       - key: ADMIN_USER_ID
         sync: false
-
-  - type: cron
-    name: leaderboard-calculator
-    env: python
-    schedule: "0 0 * * *"
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python calculate_leaderboards.py"
-    envVars:
-      - key: DATABASE_URL
-        fromService:
-          type: web
-          name: telegram-quiz-bot
-          property: DATABASE_URL
