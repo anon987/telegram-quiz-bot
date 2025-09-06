@@ -4,6 +4,7 @@ import os
 import asyncio
 import database as db
 import uuid
+import re
 from telegram.helpers import escape_markdown
 from telegram import Update
 from telegram.ext import (
@@ -42,6 +43,15 @@ def escape_markdown_v1(text: str) -> str:
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("👋 Hi! Please send me your quiz Excel file (.xlsx)")
+
+def escape_markdown_v2(text: str) -> str:
+    """
+    Escapes all special characters for Telegram MarkdownV2.
+    """
+    if not text:
+        return ""
+    # Telegram MarkdownV2 special characters
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
 
 # Handle uploaded Excel file
@@ -142,21 +152,20 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message, parse_mode='Markdown')
 
 
-# /groupinfo command
 async def groupinfo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     if not chat:
         await update.message.reply_text("⚠️ Could not fetch chat details.")
         return
 
-    # Escape values to prevent Markdown errors
-    title = escape_markdown(chat.title or "N/A", version=2)
-    username = f"@{chat.username}" if chat.username else "N/A"
+    # Escape all dynamic text
+    title = escape_markdown_v2(chat.title or "N/A")
+    username = f"@{escape_markdown_v2(chat.username)}" if chat.username else "N/A"
 
     try:
         member_count = await context.bot.get_chat_member_count(chat.id)
     except Exception as e:
-        member_count = f"Error: {escape_markdown(str(e), version=2)}"
+        member_count = f"Error: {escape_markdown_v2(str(e))}"
 
     details = (
         f"📌 *Group Information* 📌\n\n"
@@ -168,23 +177,20 @@ async def groupinfo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"👮 *Admins:* \n"
     )
 
-    # Fetch all admins
     try:
         admins = await context.bot.get_chat_administrators(chat.id)
         for admin in admins:
             user = admin.user
             role = "Owner" if admin.status == "creator" else "Admin"
             if user.username:
-                uname = f"@{escape_markdown(user.username, version=2)}"
+                uname = f"@{escape_markdown_v2(user.username)}"
             else:
-                uname = escape_markdown(user.full_name, version=2)
+                uname = escape_markdown_v2(user.full_name)
             details += f" - {uname} ({role})\n"
     except Exception as e:
-        details += f"❌ Could not fetch admins ({escape_markdown(str(e), version=2)})"
+        details += f"❌ Could not fetch admins ({escape_markdown_v2(str(e))})"
 
     await update.message.reply_text(details, parse_mode="MarkdownV2")
-
-
 
 # Main entry point
 def main():
