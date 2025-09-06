@@ -149,7 +149,7 @@ async def groupinfo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Could not fetch chat details.")
         return
 
-    # Escape using MarkdownV2
+    # Escape values to prevent Markdown errors
     title = escape_markdown(chat.title or "N/A", version=2)
     username = f"@{chat.username}" if chat.username else "N/A"
 
@@ -168,6 +168,7 @@ async def groupinfo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"👮 *Admins:* \n"
     )
 
+    # Fetch all admins
     try:
         admins = await context.bot.get_chat_administrators(chat.id)
         for admin in admins:
