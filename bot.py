@@ -44,16 +44,6 @@ def escape_markdown_v1(text: str) -> str:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("👋 Hi! Please send me your quiz Excel file (.xlsx)")
 
-def escape_markdown_v2(text: str) -> str:
-    """
-    Escapes all special characters for Telegram MarkdownV2.
-    """
-    if not text:
-        return ""
-    # Telegram MarkdownV2 special characters
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
-
-
 # Handle uploaded Excel file
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -152,6 +142,22 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message, parse_mode='Markdown')
 
 
+def escape_markdown_v2(text: str) -> str:
+    """
+    Escapes all special characters for Telegram MarkdownV2.
+    """
+    if not text:
+        return ""
+    # Telegram MarkdownV2 special characters - order matters!
+    # Escape backslash first, then other characters
+    text = text.replace('\\', '\\\\')
+    # Then escape all other special characters
+    special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+    for char in special_chars:
+        text = text.replace(char, f'\\{char}')
+    return text
+
+# Also update your groupinfo function to handle member_count properly:
 async def groupinfo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     if not chat:
@@ -164,16 +170,17 @@ async def groupinfo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         member_count = await context.bot.get_chat_member_count(chat.id)
+        member_count_str = str(member_count)  # Numbers don't need escaping
     except Exception as e:
-        member_count = f"Error: {escape_markdown_v2(str(e))}"
+        member_count_str = f"Error: {escape_markdown_v2(str(e))}"
 
     details = (
         f"📌 *Group Information* 📌\n\n"
         f"ID: `{chat.id}`\n"
         f"Title: {title}\n"
-        f"Type: {chat.type}\n"
+        f"Type: {escape_markdown_v2(chat.type)}\n"
         f"Username: {username}\n"
-        f"Members Count: {member_count}\n\n"
+        f"Members Count: {member_count_str}\n\n"
         f"👮 *Admins:* \n"
     )
 
@@ -186,9 +193,9 @@ async def groupinfo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 uname = f"@{escape_markdown_v2(user.username)}"
             else:
                 uname = escape_markdown_v2(user.full_name)
-            details += f" - {uname} ({role})\n"
+            details += f" \\- {uname} \\({escape_markdown_v2(role)}\\)\n"
     except Exception as e:
-        details += f"❌ Could not fetch admins ({escape_markdown_v2(str(e))})"
+        details += f"❌ Could not fetch admins \\({escape_markdown_v2(str(e))}\\)"
 
     await update.message.reply_text(details, parse_mode="MarkdownV2")
 
