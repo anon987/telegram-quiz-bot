@@ -4,7 +4,7 @@ import os
 import asyncio
 import database as db
 import uuid
-
+from telegram.helpers import escape_markdown
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -149,14 +149,14 @@ async def groupinfo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Could not fetch chat details.")
         return
 
-    # Escape user-provided values
-    title = escape_markdown_v1(chat.title) if chat.title else "N/A"
+    # Escape using MarkdownV2
+    title = escape_markdown(chat.title or "N/A", version=2)
     username = f"@{chat.username}" if chat.username else "N/A"
 
     try:
         member_count = await context.bot.get_chat_member_count(chat.id)
     except Exception as e:
-        member_count = f"Error: {e}"
+        member_count = f"Error: {escape_markdown(str(e), version=2)}"
 
     details = (
         f"📌 *Group Information* 📌\n\n"
@@ -173,12 +173,15 @@ async def groupinfo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for admin in admins:
             user = admin.user
             role = "Owner" if admin.status == "creator" else "Admin"
-            uname = f"@{user.username}" if user.username else escape_markdown_v1(user.full_name)
+            if user.username:
+                uname = f"@{escape_markdown(user.username, version=2)}"
+            else:
+                uname = escape_markdown(user.full_name, version=2)
             details += f" - {uname} ({role})\n"
     except Exception as e:
-        details += f"❌ Could not fetch admins ({e})"
+        details += f"❌ Could not fetch admins ({escape_markdown(str(e), version=2)})"
 
-    await update.message.reply_text(details, parse_mode="Markdown")
+    await update.message.reply_text(details, parse_mode="MarkdownV2")
 
 
 
