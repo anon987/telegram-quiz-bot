@@ -149,30 +149,37 @@ async def groupinfo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Could not fetch chat details.")
         return
 
-    # Basic group info
-    member_count = await context.bot.get_chat_member_count(chat.id)
+    # Escape user-provided values
+    title = escape_markdown_v1(chat.title) if chat.title else "N/A"
+    username = f"@{chat.username}" if chat.username else "N/A"
+
+    try:
+        member_count = await context.bot.get_chat_member_count(chat.id)
+    except Exception as e:
+        member_count = f"Error: {e}"
+
     details = (
         f"📌 *Group Information* 📌\n\n"
         f"ID: `{chat.id}`\n"
-        f"Title: {chat.title}\n"
+        f"Title: {title}\n"
         f"Type: {chat.type}\n"
-        f"Username: @{chat.username if chat.username else 'N/A'}\n"
+        f"Username: {username}\n"
         f"Members Count: {member_count}\n\n"
         f"👮 *Admins:* \n"
     )
 
-    # Fetch all admins
     try:
         admins = await context.bot.get_chat_administrators(chat.id)
         for admin in admins:
             user = admin.user
             role = "Owner" if admin.status == "creator" else "Admin"
-            username = f"@{user.username}" if user.username else user.full_name
-            details += f" - {username} ({role})\n"
+            uname = f"@{user.username}" if user.username else escape_markdown_v1(user.full_name)
+            details += f" - {uname} ({role})\n"
     except Exception as e:
         details += f"❌ Could not fetch admins ({e})"
 
     await update.message.reply_text(details, parse_mode="Markdown")
+
 
 
 # Main entry point
