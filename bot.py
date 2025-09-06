@@ -43,6 +43,7 @@ def escape_markdown_v1(text: str) -> str:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("👋 Hi! Please send me your quiz Excel file (.xlsx)")
 
+
 # Handle uploaded Excel file
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -94,24 +95,28 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if os.path.exists(file_path):
             os.remove(file_path)
 
+
+# Handle poll answers
 async def handle_poll_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles a user's answer to a poll."""
     answer = update.poll_answer
     user = answer.user
     poll_id = answer.poll_id
-    
+
     if poll_id in context.bot_data:
         correct_option_id, session_id = context.bot_data[poll_id]
         is_correct = answer.option_ids[0] == correct_option_id
         db.log_answer(user.id, user.username, is_correct, session_id)
 
+
+# /leaderboard command
 async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Please specify a time frame (daily, weekly, monthly, all) or 'session' for the last quiz.")
         return
 
     arg = context.args[0].lower()
-    
+
     if arg == 'session':
         session_id = context.bot_data.get('current_session_id')
         if not session_id:
@@ -136,6 +141,40 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(message, parse_mode='Markdown')
 
+
+# /groupinfo command
+async def groupinfo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = update.effective_chat
+    if not chat:
+        await update.message.reply_text("⚠️ Could not fetch chat details.")
+        return
+
+    # Basic group info
+    member_count = await context.bot.get_chat_member_count(chat.id)
+    details = (
+        f"📌 *Group Information* 📌\n\n"
+        f"ID: `{chat.id}`\n"
+        f"Title: {chat.title}\n"
+        f"Type: {chat.type}\n"
+        f"Username: @{chat.username if chat.username else 'N/A'}\n"
+        f"Members Count: {member_count}\n\n"
+        f"👮 *Admins:* \n"
+    )
+
+    # Fetch all admins
+    try:
+        admins = await context.bot.get_chat_administrators(chat.id)
+        for admin in admins:
+            user = admin.user
+            role = "Owner" if admin.status == "creator" else "Admin"
+            username = f"@{user.username}" if user.username else user.full_name
+            details += f" - {username} ({role})\n"
+    except Exception as e:
+        details += f"❌ Could not fetch admins ({e})"
+
+    await update.message.reply_text(details, parse_mode="Markdown")
+
+
 # Main entry point
 def main():
     db.initialize_database()
@@ -143,12 +182,15 @@ def main():
         raise ValueError("BOT_TOKEN or GROUP_CHAT_ID is not set in environment variables.")
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    # Register handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("leaderboard", leaderboard))
+    app.add_handler(CommandHandler("groupinfo", groupinfo))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     app.add_handler(PollAnswerHandler(handle_poll_answer))
 
-    # Set up webhook
+    # Set up webhook or polling
     webhook_url = os.getenv("WEBHOOK_URL")
     port = int(os.getenv("PORT", "8443"))
     if webhook_url:
@@ -161,6 +203,7 @@ def main():
     else:
         logger.warning("WEBHOOK_URL not set, running in polling mode.")
         app.run_polling()
+
 
 if __name__ == "__main__":
     main()
