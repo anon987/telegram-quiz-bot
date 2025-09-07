@@ -202,21 +202,52 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 correct_option_id = get_answer_option_id(answer_english, answer_hindi)
                 
                 # Send poll with explanation
-                message = await context.bot.send_poll(
-                    chat_id=GROUP_CHAT_ID,
-                    question=question,
-                    options=options,
-                    type="quiz",
-                    correct_option_id=correct_option_id,
-                    is_anonymous=False,
-                    explanation=explanation if explanation else None  # This adds the bulb icon with explanation
-                )
-                
-                # Save the correct answer for this poll
-                context.bot_data[message.poll.id] = (correct_option_id, session_id)
-                processed_count += 1
-                
-                await asyncio.sleep(1)  # Prevent hitting Telegram rate limits
+                try:
+                    message = await context.bot.send_poll(
+                        chat_id=GROUP_CHAT_ID,
+                        question=question,
+                        options=options,
+                        type="quiz",
+                        correct_option_id=correct_option_id,
+                        is_anonymous=False,
+                        explanation=explanation if explanation else None  # This adds the bulb icon with explanation
+                    )
+                    
+                    # Save the correct answer for this poll
+                    context.bot_data[message.poll.id] = (correct_option_id, session_id)
+                    processed_count += 1
+                    
+                    # Slower delay to prevent rate limiting
+                    await asyncio.sleep(2)  # Increased from 1 to 2 seconds
+                    
+                except Exception as poll_error:
+                    if "Flood control exceeded" in str(poll_error) or "Too Many Requests" in str(poll_error):
+                        # Handle rate limiting - wait longer and retry once
+                        logger.warning(f"⚠️ Rate limited at question #{question_no}. Waiting 35 seconds...")
+                        await asyncio.sleep(35)
+                        
+                        try:
+                            # Retry sending the poll
+                            message = await context.bot.send_poll(
+                                chat_id=GROUP_CHAT_ID,
+                                question=question,
+                                options=options,
+                                type="quiz",
+                                correct_option_id=correct_option_id,
+                                is_anonymous=False,
+                                explanation=explanation if explanation else None
+                            )
+                            
+                            context.bot_data[message.poll.id] = (correct_option_id, session_id)
+                            processed_count += 1
+                            logger.info(f"✅ Successfully retried question #{question_no} after rate limit")
+                            
+                        except Exception as retry_error:
+                            logger.error(f"❌ Failed to send question #{question_no} even after retry: {retry_error}")
+                            skipped_count += 1
+                    else:
+                        # Other errors (not rate limiting)
+                        raise poll_error
                 
             except Exception as e:
                 logger.error(f"❌ Error processing row {i+1}: {e}")
