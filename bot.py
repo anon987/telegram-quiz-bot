@@ -155,19 +155,19 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 # Add Exam Name & Year at the top if available
                 if exam_name_year and exam_name_year != "nan":
-                    explanation = f"**{exam_name_year}**"
+                    explanation = f"{exam_name_year}"
                 
                 # Hindi explanation next
                 if explanation_hindi and explanation_hindi != "nan":
                     if explanation:
-                        explanation += f"\n\n{explanation_hindi}"
+                        explanation += f"{explanation_hindi}"
                     else:
                         explanation = explanation_hindi
                 
                 # Then English explanation
                 if explanation_english and explanation_english != "nan":
                     if explanation:
-                        explanation += f"\n\n{explanation_english}"
+                        explanation += f"\n{explanation_english}"
                     else:
                         explanation = explanation_english
                 
