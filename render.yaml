@@ -16,5 +16,5 @@ services:
           property: url
       - key: DATABASE_URL
         sync: false
-      - key: ADMIN_USER_ID
+      - key: ADMIN_USER_IDS
         sync: false
