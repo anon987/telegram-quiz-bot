@@ -40,6 +40,43 @@ def escape_markdown_v1(text: str) -> str:
     return text
 
 
+def validate_text_length(text: str, max_length: int, field_name: str) -> bool:
+    """Validates text length and logs warnings if exceeded."""
+    if len(text) > max_length:
+        logger.warning(f"⚠️ {field_name} exceeds {max_length} characters: '{text[:50]}...'")
+        return False
+    return True
+
+
+def get_answer_option_id(answer_english: str, answer_hindi: str) -> int:
+    """
+    Determines the correct option ID from English or Hindi answer text.
+    Returns the option index (0-3) for options A-D.
+    """
+    # Check English answer first
+    if answer_english and answer_english.strip().upper() in ['A', 'B', 'C', 'D']:
+        return ord(answer_english.strip().upper()) - ord('A')
+    
+    # Check Hindi answer patterns
+    if answer_hindi:
+        hindi_answer = answer_hindi.strip()
+        # Common Hindi patterns for options
+        hindi_patterns = {
+            'अ': 0, 'A': 0, 'ए': 0,
+            'ब': 1, 'B': 1, 'बी': 1,
+            'स': 2, 'C': 2, 'सी': 2,
+            'द': 3, 'D': 3, 'डी': 3
+        }
+        
+        for pattern, option_id in hindi_patterns.items():
+            if pattern in hindi_answer:
+                return option_id
+    
+    # Default to option A if unable to parse
+    logger.warning(f"Unable to parse answer: English='{answer_english}', Hindi='{answer_hindi}'. Defaulting to A.")
+    return 0
+
+
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("👋 Hi! Please send me your quiz Excel file (.xlsx)")
@@ -66,14 +103,79 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"📄 Processing your quiz... (Session ID: {session_id})")
 
         df = pd.read_excel(file_path)
+        
+        processed_count = 0
+        skipped_count = 0
 
         for i, row in df.iterrows():
-            question = str(row.get("Question", "")).strip()
-            options = [str(row.get(col, "")).strip() for col in ["A", "B", "C", "D"]]
-            correct = str(row.get("Correct", "A")).strip().upper()
-
-            if question and all(options) and correct in ["A", "B", "C", "D"]:
-                correct_option_id = ord(correct) - ord("A")
+            try:
+                # Extract data from the new format
+                question_no = str(row.get("No.", "")).strip()
+                question_english = str(row.get("Question (English)", "")).strip()
+                question_hindi = str(row.get("प्रश्न (Hindi)", "")).strip()
+                
+                # Combine English and Hindi questions
+                question = f"{question_english}"
+                if question_hindi and question_hindi != "nan":
+                    question += f"\n\n{question_hindi}"
+                
+                # Extract options (English and Hindi)
+                options = []
+                option_labels = ['A', 'B', 'C', 'D']
+                
+                for label in option_labels:
+                    option_eng = str(row.get(f"Option {label}", "")).strip()
+                    option_hin = str(row.get(f"विकल्प {label}", "")).strip()
+                    
+                    combined_option = option_eng
+                    if option_hin and option_hin != "nan":
+                        combined_option += f" / {option_hin}"
+                    
+                    options.append(combined_option)
+                
+                # Extract explanations
+                explanation_english = str(row.get("Explanation (English)", "")).strip()
+                explanation_hindi = str(row.get("व्याख्या (Hindi)", "")).strip()
+                
+                explanation = ""
+                if explanation_english and explanation_english != "nan":
+                    explanation = explanation_english
+                if explanation_hindi and explanation_hindi != "nan":
+                    if explanation:
+                        explanation += f"\n\n{explanation_hindi}"
+                    else:
+                        explanation = explanation_hindi
+                
+                # Extract correct answers
+                answer_english = str(row.get("Answer (English)", "")).strip()
+                answer_hindi = str(row.get("उत्तर (Hindi)", "")).strip()
+                
+                # Validate lengths
+                if not validate_text_length(question, 300, f"Question #{question_no}"):
+                    skipped_count += 1
+                    continue
+                
+                # Check if any option exceeds 100 characters
+                option_length_valid = True
+                for j, option in enumerate(options):
+                    if not validate_text_length(option, 100, f"Option {option_labels[j]} for Question #{question_no}"):
+                        option_length_valid = False
+                        break
+                
+                if not option_length_valid:
+                    skipped_count += 1
+                    continue
+                
+                # Validate that we have all required data
+                if not question or not all(opt.strip() for opt in options):
+                    logger.warning(f"⚠️ Skipping question #{question_no}: Missing question or options")
+                    skipped_count += 1
+                    continue
+                
+                # Get correct option ID
+                correct_option_id = get_answer_option_id(answer_english, answer_hindi)
+                
+                # Send poll with explanation
                 message = await context.bot.send_poll(
                     chat_id=GROUP_CHAT_ID,
                     question=question,
@@ -81,12 +183,27 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     type="quiz",
                     correct_option_id=correct_option_id,
                     is_anonymous=False,
+                    explanation=explanation if explanation else None  # This adds the bulb icon with explanation
                 )
+                
                 # Save the correct answer for this poll
                 context.bot_data[message.poll.id] = (correct_option_id, session_id)
+                processed_count += 1
+                
                 await asyncio.sleep(1)  # Prevent hitting Telegram rate limits
-            else:
-                logger.warning(f"⚠️ Skipping invalid row: {row}")
+                
+            except Exception as e:
+                logger.error(f"❌ Error processing row {i+1}: {e}")
+                skipped_count += 1
+                continue
+
+        # Send summary message
+        summary = f"✅ Quiz processing completed!\n"
+        summary += f"📊 Processed: {processed_count} questions\n"
+        if skipped_count > 0:
+            summary += f"⚠️ Skipped: {skipped_count} questions (length validation failed or missing data)"
+        
+        await update.message.reply_text(summary)
 
     except Exception as e:
         logger.error(f"❌ Error processing file: {e}")
@@ -204,6 +321,13 @@ def main():
     db.initialize_database()
     if not BOT_TOKEN or not GROUP_CHAT_ID:
         raise ValueError("BOT_TOKEN or GROUP_CHAT_ID is not set in environment variables.")
+    
+    # Validate admin IDs
+    admin_ids = get_admin_ids()
+    if not admin_ids:
+        raise ValueError("ADMIN_USER_IDS is not set or empty in environment variables.")
+    
+    logger.info(f"Bot starting with {len(admin_ids)} admin(s): {', '.join(admin_ids)}")
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
