@@ -146,18 +146,30 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     
                     options.append(combined_option)
                 
-                # Extract explanations
+                # Extract explanations (with Exam Name & Year at the top if available)
                 explanation_english = str(row.get("Explanation (English)", "")).strip()
                 explanation_hindi = str(row.get("व्याख्या (Hindi)", "")).strip()
+                exam_name_year = str(row.get("Exam Name & Year", "")).strip()
                 
                 explanation = ""
-                if explanation_english and explanation_english != "nan":
-                    explanation = explanation_english
+                
+                # Add Exam Name & Year at the top if available
+                if exam_name_year and exam_name_year != "nan":
+                    explanation = f"**{exam_name_year}**"
+                
+                # Hindi explanation next
                 if explanation_hindi and explanation_hindi != "nan":
                     if explanation:
                         explanation += f"\n\n{explanation_hindi}"
                     else:
                         explanation = explanation_hindi
+                
+                # Then English explanation
+                if explanation_english and explanation_english != "nan":
+                    if explanation:
+                        explanation += f"\n\n{explanation_english}"
+                    else:
+                        explanation = explanation_english
                 
                 # Extract correct answers
                 answer_english = str(row.get("Answer (English)", "")).strip()
