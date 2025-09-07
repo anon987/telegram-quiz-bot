@@ -29,6 +29,19 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def get_admin_ids():
+    """Parse admin IDs from environment variable."""
+    if not ADMIN_USER_IDS:
+        return []
+    return [user_id.strip() for user_id in ADMIN_USER_IDS.split(',') if user_id.strip()]
+
+
+def is_admin(user_id):
+    """Check if user is an admin."""
+    admin_ids = get_admin_ids()
+    return str(user_id) in admin_ids
+
+
 def escape_markdown_v1(text: str) -> str:
     """Escapes characters for Telegram's legacy Markdown."""
     if not text:
