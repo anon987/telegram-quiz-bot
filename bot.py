@@ -19,7 +19,7 @@ from telegram.ext import (
 # Load from environment variables
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 GROUP_CHAT_ID = os.getenv("GROUP_CHAT_ID")
-ADMIN_USER_ID = os.getenv("ADMIN_USER_ID")
+ADMIN_USER_IDS = os.getenv("ADMIN_USER_IDS")  # Comma-separated list of admin IDs
 
 # Set up logging
 logging.basicConfig(
@@ -97,8 +97,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Handle uploaded Excel file
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    if str(user_id) != ADMIN_USER_ID:
-        await update.message.reply_text("Sorry, only the admin can start a new quiz.")
+    if not is_admin(user_id):
+        await update.message.reply_text("❌ Sorry, only admins can start a new quiz.")
         return
 
     file = update.message.document
@@ -289,6 +289,13 @@ def escape_markdown_v2(text: str) -> str:
 
 # Also update your groupinfo function to handle member_count properly:
 async def groupinfo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    
+    # Check if user is admin
+    if not is_admin(user_id):
+        await update.message.reply_text("❌ Sorry, only admins can use this command.")
+        return
+    
     chat = update.effective_chat
     if not chat:
         await update.message.reply_text("⚠️ Could not fetch chat details.")
