@@ -163,21 +163,34 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 answer_english = str(row.get("Answer (English)", "")).strip()
                 answer_hindi = str(row.get("उत्तर (Hindi)", "")).strip()
                 
-                # Validate lengths
-                if not validate_text_length(question, 300, f"Question #{question_no}"):
+                # Validate lengths with stricter Telegram limits
+                # Question: 1-255 characters (leaving buffer for safety)
+                if not validate_text_length(question, 255, f"Question #{question_no}"):
                     skipped_count += 1
                     continue
                 
-                # Check if any option exceeds 100 characters
+                # Check if any option exceeds 80 characters (stricter limit for options)
                 option_length_valid = True
                 for j, option in enumerate(options):
-                    if not validate_text_length(option, 100, f"Option {option_labels[j]} for Question #{question_no}"):
+                    if not validate_text_length(option, 80, f"Option {option_labels[j]} for Question #{question_no}"):
                         option_length_valid = False
                         break
                 
                 if not option_length_valid:
                     skipped_count += 1
                     continue
+                
+                # Validate explanation length (max 200 characters)
+                if explanation and not validate_text_length(explanation, 180, f"Explanation for Question #{question_no}"):
+                    # If explanation is too long, truncate it instead of skipping
+                    explanation = explanation[:180] + "..."
+                    logger.warning(f"⚠️ Truncated explanation for Question #{question_no}")
+                
+                # Additional check: if explanation has more than 2 line breaks, truncate
+                if explanation and explanation.count('\n') > 2:
+                    lines = explanation.split('\n')
+                    explanation = '\n'.join(lines[:3])  # Keep only first 3 lines (2 line breaks)
+                    logger.warning(f"⚠️ Truncated explanation lines for Question #{question_no}")
                 
                 # Validate that we have all required data
                 if not question or not all(opt.strip() for opt in options):
